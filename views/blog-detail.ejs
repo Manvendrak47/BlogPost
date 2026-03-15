@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title><%= blog.title %> - BlogPost Platform</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main class="detail-page">
+      <h1><%= blog.title %></h1>
+      <p class="meta">By <%= blog.author_name %> • <%= new Date(blog.created_at).toLocaleString() %></p>
+
+      <% if (canReadFull) { %>
+        <article class="blog-body"><%= blog.content %></article>
+      <% } else { %>
+        <article class="blog-body"><%= preview %></article>
+        <p class="notice">Only customers can read full content. Please <a href="/login">login</a> as customer.</p>
+      <% } %>
+
+      <p><a href="/">Back to blogs</a></p>
+    </main>
+  </body>
+</html>

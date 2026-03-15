@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>BlogPost Platform</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <header>
+      <h1><a href="/">BlogPost Platform</a></h1>
+      <nav>
+        <% if (!currentUser) { %>
+          <a href="/register">Register</a>
+          <a href="/login">Login</a>
+        <% } else { %>
+          <span>Hi, <%= currentUser.name %> (<%= currentUser.role %>)</span>
+          <% if (currentUser.role === 'provider') { %>
+            <a href="/blogs/new">Write Blog</a>
+          <% } %>
+          <form action="/logout" method="POST" class="inline-form">
+            <button type="submit">Logout</button>
+          </form>
+        <% } %>
+      </nav>
+    </header>
+
+    <main>
+      <section class="banner">
+        <h2>Read and Publish Blogs</h2>
+        <% if (!currentUser) { %>
+          <p>Guests can only read a preview. Login as customer to unlock full blogs.</p>
+        <% } else if (currentUser.role === 'provider') { %>
+          <p>You are logged in as provider. You can publish new blogs.</p>
+        <% } else { %>
+          <p>You are logged in as customer. You can read full blogs.</p>
+        <% } %>
+      </section>
+
+      <% if (blogs.length === 0) { %>
+        <p>No blogs yet. Providers can add the first one!</p>
+      <% } %>
+
+      <section class="blog-grid">
+        <% blogs.forEach(blog => { %>
+          <article class="blog-card">
+            <h3><a href="/blogs/<%= blog.id %>"><%= blog.title %></a></h3>
+            <p class="meta">By <%= blog.author_name %> • <%= new Date(blog.created_at).toLocaleString() %></p>
+            <p><%= blog.displayContent %></p>
+            <% if (blog.isTruncated) { %>
+              <p class="notice">Login as customer to read full blog.</p>
+            <% } %>
+            <a href="/blogs/<%= blog.id %>" class="read-link"><%= canReadFull ? 'Read full post' : 'Read preview' %></a>
+          </article>
+        <% }) %>
+      </section>
+    </main>
+  </body>
+</html>

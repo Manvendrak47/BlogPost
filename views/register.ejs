@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Register - BlogPost Platform</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main class="form-page">
+      <h1>Create Account</h1>
+      <% if (error) { %>
+        <p class="error"><%= error %></p>
+      <% } %>
+      <form method="POST" action="/register" class="form-card">
+        <label>Name<input type="text" name="name" required /></label>
+        <label>Email<input type="email" name="email" required /></label>
+        <label>Password<input type="password" name="password" required /></label>
+        <label>Role
+          <select name="role" required>
+            <option value="">Select role</option>
+            <option value="provider">Provider (Blog Author)</option>
+            <option value="customer">Customer (Reader)</option>
+          </select>
+        </label>
+        <button type="submit">Register</button>
+      </form>
+      <p>Already have an account? <a href="/login">Login</a></p>
+      <p><a href="/">Back to blogs</a></p>
+    </main>
+  </body>
+</html>

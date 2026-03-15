@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>New Blog - BlogPost Platform</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main class="form-page">
+      <h1>Create a Blog Post</h1>
+      <% if (error) { %>
+        <p class="error"><%= error %></p>
+      <% } %>
+      <form method="POST" action="/blogs" class="form-card">
+        <label>Title<input type="text" name="title" required /></label>
+        <label>Content<textarea name="content" rows="10" required></textarea></label>
+        <button type="submit">Publish</button>
+      </form>
+      <p><a href="/">Back to blogs</a></p>
+    </main>
+  </body>
+</html>

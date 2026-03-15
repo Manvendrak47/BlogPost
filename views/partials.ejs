@@ -1,0 +1,19 @@
+<% function nav(currentUser) { %>
+  <header>
+    <h1><a href="/">BlogPost Platform</a></h1>
+    <nav>
+      <% if (!currentUser) { %>
+        <a href="/register">Register</a>
+        <a href="/login">Login</a>
+      <% } else { %>
+        <span>Hi, <%= currentUser.name %> (<%= currentUser.role %>)</span>
+        <% if (currentUser.role === 'provider') { %>
+          <a href="/blogs/new">Write Blog</a>
+        <% } %>
+        <form action="/logout" method="POST" class="inline-form">
+          <button type="submit">Logout</button>
+        </form>
+      <% } %>
+    </nav>
+  </header>
+<% } %>

@@ -1,12 +1,12 @@
+const fs = require('fs');
 const path = require('path');
 const express = require('express');
 const session = require('express-session');
 const bcrypt = require('bcryptjs');
-const Database = require('better-sqlite3');
 
 const app = express();
-const db = new Database(path.join(__dirname, 'blog.db'));
 const PORT = process.env.PORT || 3000;
+const DATA_PATH = path.join(__dirname, 'data.json');
 
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
@@ -21,29 +21,26 @@ app.use(
   })
 );
 
-function initDb() {
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS users (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      name TEXT NOT NULL,
-      email TEXT UNIQUE NOT NULL,
-      password_hash TEXT NOT NULL,
-      role TEXT NOT NULL CHECK (role IN ('provider', 'customer')),
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    );
-
-    CREATE TABLE IF NOT EXISTS blogs (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      title TEXT NOT NULL,
-      content TEXT NOT NULL,
-      author_id INTEGER NOT NULL,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (author_id) REFERENCES users(id)
-    );
-  `);
+function initDataStore() {
+  if (!fs.existsSync(DATA_PATH)) {
+    const initialData = {
+      counters: { userId: 0, blogId: 0 },
+      users: [],
+      blogs: [],
+    };
+    fs.writeFileSync(DATA_PATH, JSON.stringify(initialData, null, 2));
+  }
 }
 
-initDb();
+function readData() {
+  return JSON.parse(fs.readFileSync(DATA_PATH, 'utf8'));
+}
+
+function writeData(data) {
+  fs.writeFileSync(DATA_PATH, JSON.stringify(data, null, 2));
+}
+
+initDataStore();
 
 app.use((req, res, next) => {
   res.locals.currentUser = req.session.user || null;
@@ -78,16 +75,21 @@ function truncateText(content, maxChars = 220) {
   return `${content.slice(0, maxChars)}...`;
 }
 
-app.get('/', (req, res) => {
-  const blogs = db
-    .prepare(
-      `SELECT blogs.id, blogs.title, blogs.content, blogs.created_at, users.name AS author_name
-       FROM blogs
-       JOIN users ON users.id = blogs.author_id
-       ORDER BY blogs.created_at DESC`
-    )
-    .all();
+function listBlogsWithAuthors(data) {
+  return data.blogs
+    .map((blog) => {
+      const author = data.users.find((user) => user.id === blog.author_id);
+      return {
+        ...blog,
+        author_name: author ? author.name : 'Unknown',
+      };
+    })
+    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+}
 
+app.get('/', (req, res) => {
+  const data = readData();
+  const blogs = listBlogsWithAuthors(data);
   const canReadFull = req.session.user && req.session.user.role === 'customer';
 
   const formattedBlogs = blogs.map((blog) => ({
@@ -114,17 +116,27 @@ app.post('/register', (req, res) => {
     return res.status(400).render('register', { error: 'Invalid role selected.' });
   }
 
-  const existingUser = db.prepare('SELECT id FROM users WHERE email = ?').get(email);
+  const data = readData();
+  const normalizedEmail = String(email).trim().toLowerCase();
+  const existingUser = data.users.find((user) => user.email === normalizedEmail);
+
   if (existingUser) {
     return res.status(400).render('register', { error: 'Email already registered.' });
   }
 
   const passwordHash = bcrypt.hashSync(password, 10);
-  const insert = db.prepare(
-    'INSERT INTO users (name, email, password_hash, role) VALUES (?, ?, ?, ?)'
-  );
-  insert.run(name, email, passwordHash, role);
+  data.counters.userId += 1;
 
+  data.users.push({
+    id: data.counters.userId,
+    name: String(name).trim(),
+    email: normalizedEmail,
+    password_hash: passwordHash,
+    role,
+    created_at: new Date().toISOString(),
+  });
+
+  writeData(data);
   return res.redirect('/login');
 });
 
@@ -134,10 +146,10 @@ app.get('/login', (req, res) => {
 
 app.post('/login', (req, res) => {
   const { email, password } = req.body;
+  const data = readData();
+  const normalizedEmail = String(email || '').trim().toLowerCase();
 
-  const user = db
-    .prepare('SELECT id, name, email, role, password_hash FROM users WHERE email = ?')
-    .get(email);
+  const user = data.users.find((u) => u.email === normalizedEmail);
 
   if (!user || !bcrypt.compareSync(password, user.password_hash)) {
     return res.status(401).render('login', { error: 'Invalid email or password.' });
@@ -172,24 +184,25 @@ app.post('/blogs', requireRole('provider'), (req, res) => {
     });
   }
 
-  db.prepare('INSERT INTO blogs (title, content, author_id) VALUES (?, ?, ?)').run(
-    title,
-    content,
-    req.session.user.id
-  );
+  const data = readData();
+  data.counters.blogId += 1;
 
+  data.blogs.push({
+    id: data.counters.blogId,
+    title: String(title).trim(),
+    content: String(content).trim(),
+    author_id: req.session.user.id,
+    created_at: new Date().toISOString(),
+  });
+
+  writeData(data);
   return res.redirect('/');
 });
 
 app.get('/blogs/:id', (req, res) => {
-  const blog = db
-    .prepare(
-      `SELECT blogs.id, blogs.title, blogs.content, blogs.created_at, users.name AS author_name
-       FROM blogs
-       JOIN users ON users.id = blogs.author_id
-       WHERE blogs.id = ?`
-    )
-    .get(req.params.id);
+  const data = readData();
+  const blogId = Number(req.params.id);
+  const blog = listBlogsWithAuthors(data).find((entry) => entry.id === blogId);
 
   if (!blog) {
     return res.status(404).render('error', { message: 'Blog not found.' });
@@ -197,7 +210,7 @@ app.get('/blogs/:id', (req, res) => {
 
   const canReadFull = req.session.user && req.session.user.role === 'customer';
 
-  res.render('blog-detail', {
+  return res.render('blog-detail', {
     blog,
     canReadFull,
     preview: truncateText(blog.content),

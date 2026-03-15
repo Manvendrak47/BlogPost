@@ -13,7 +13,7 @@ A simple full-stack blog website with role-based access:
 - Provider-only blog creation page
 - Blog listing with preview for non-customers
 - Blog detail page with full content restricted to customers
-- SQLite-based persistence
+- File-based persistence in `data.json` (no native DB dependency)
 
 ## Run locally
 
@@ -24,4 +24,7 @@ npm start
 
 Then open `http://localhost:3000`.
 
-> If npm package installation is restricted in your environment, allow access to npm registry or install dependencies from an approved internal mirror.
+## Why this update?
+
+`better-sqlite3` can trigger native addon install warnings (for example around `prebuild-install`).
+This project now uses a JSON data store to avoid native build/deprecation issues and keep setup simpler.
